@@ -1,0 +1,18 @@
+{
+  "name": "downloader",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "keywords": [],
+  "author": "silverbirder <silverbirder@gmail.com> (https://silver-birder.github.io/)",
+  "license": "ISC",
+  "dependencies": {
+    "@googleapis/drive": "^2.1.0",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "webtorrent": "^1.5.8"
+  }
+}
