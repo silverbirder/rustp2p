@@ -40,6 +40,7 @@ app.get('/', async (req, res) => {
             _err_log(err);
         })
         .add(magnetURI, { path: process.env.OUTPUT_PATH, destroyStoreOnDestroy: true }, (torrent) => {
+            torrent.progressRound = 0;
             torrent
                 .on('done', async () => {
                     console.log('torrent done event');
@@ -73,7 +74,12 @@ app.get('/', async (req, res) => {
                     torrent.destroy();
                 })
                 .on('download', (bytes) => {
-                    _log(`【torrent download event】progress:${torrent.progress},downloaded:${torrent.downloaded},downloadSpeed:${torrent.downloadSpeed}(numPeers:${torrent.numPeers})`);
+                    // 0.9983902939757067 -> 0.9
+                    const RoundedTwoDigitProgress = Math.floor(torrent.progress * Math.pow(10, 1)) / Math.pow(10, 1);
+                    if (RoundedTwoDigitProgress > torrent.progressRound) {
+                        console.log(`【torrent download event】progress:${torrent.progress},downloaded:${torrent.downloaded},downloadSpeed:${torrent.downloadSpeed}(numPeers:${torrent.numPeers})`);
+                        torrent.progressRound = RoundedTwoDigitProgress; 
+                    }
                 })
         });
     res.status(200).send('recept magnetURI');
