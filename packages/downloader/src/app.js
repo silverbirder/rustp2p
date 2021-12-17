@@ -39,12 +39,12 @@ app.get('/', async (req, res) => {
             torrent.progressRound = 0;
             torrent
                 .on('done', async () => {
-                    console.log('torrent done event');
+                    console.log(`${torrent.name} torrent done event`);
                     const driveService = drive({
                         version: 'v3',
                         auth: jwtClient
                     });
-                    console.log('file uploading...');
+                    console.log(`${torrent.name} file uploading...`);
                     await Promise.all(torrent.files.map(async (file) => {
                         return driveService.files.create({
                             resource: {
@@ -56,9 +56,9 @@ app.get('/', async (req, res) => {
                             },
                         });
                     }));
-                    console.log('file uploaded');
+                    console.log(`${torrent.name} file uploaded`);
                     torrent.destroy();
-                    console.log('torrent destroy');
+                    console.log(`${torrent.name} torrent destroy`);
                 })
                 .on('warning', (err) => {
                     _log('torrent warning event');
@@ -73,7 +73,7 @@ app.get('/', async (req, res) => {
                     // 0.9983902939757067 -> 0.99
                     const RoundedTwoDigitProgress = Math.floor(torrent.progress * Math.pow(10, 2)) / Math.pow(10, 2);
                     if (RoundedTwoDigitProgress > torrent.progressRound) {
-                        console.log(`【torrent download event】progress:${torrent.progress},downloaded:${torrent.downloaded},downloadSpeed:${torrent.downloadSpeed}(numPeers:${torrent.numPeers})`);
+                        console.log(`【${torrent.name} torrent download event】progress:${torrent.progress},downloaded:${torrent.downloaded},downloadSpeed:${torrent.downloadSpeed}(numPeers:${torrent.numPeers})`);
                         torrent.progressRound = RoundedTwoDigitProgress; 
                     }
                 })
