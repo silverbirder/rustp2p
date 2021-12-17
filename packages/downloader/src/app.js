@@ -23,10 +23,6 @@ const _log = (message) => {
     }
 }
 
-const _err_log = (error) => {
-    console.error(error);
-}
-
 app.get('/', async (req, res) => {
     const magnetURI = req.query.magnet_uri;
     if (!magnetURI) {
@@ -37,7 +33,7 @@ app.get('/', async (req, res) => {
     client
         .on('error', (err) => {
             _log('catch client error');
-            _err_log(err);
+            _log(err);
         })
         .add(magnetURI, { path: process.env.OUTPUT_PATH, destroyStoreOnDestroy: true }, (torrent) => {
             torrent.progressRound = 0;
@@ -66,16 +62,16 @@ app.get('/', async (req, res) => {
                 })
                 .on('warning', (err) => {
                     _log('torrent warning event');
-                    _err_log(err);
+                    _log(err);
                 })
                 .on('error', (err) => {
                     _log('torrent error event');
-                    _err_log(err);
+                    _log(err);
                     torrent.destroy();
                 })
                 .on('download', (bytes) => {
-                    // 0.9983902939757067 -> 0.9
-                    const RoundedTwoDigitProgress = Math.floor(torrent.progress * Math.pow(10, 1)) / Math.pow(10, 1);
+                    // 0.9983902939757067 -> 0.99
+                    const RoundedTwoDigitProgress = Math.floor(torrent.progress * Math.pow(10, 2)) / Math.pow(10, 2);
                     if (RoundedTwoDigitProgress > torrent.progressRound) {
                         console.log(`【torrent download event】progress:${torrent.progress},downloaded:${torrent.downloaded},downloadSpeed:${torrent.downloadSpeed}(numPeers:${torrent.numPeers})`);
                         torrent.progressRound = RoundedTwoDigitProgress; 
