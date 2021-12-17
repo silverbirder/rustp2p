@@ -8,7 +8,7 @@ const client = new WebTorrent();
 const jwtClient = new JWT(
     process.env.SERVICE_ACCOUNT_CLIENT_EMAIL,
     null,
-    process.env.SERVICE_ACCOUNT_PRIVATE_KEY,
+    process.env.SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n'),
     ['https://www.googleapis.com/auth/drive.file'],
 );
 
@@ -48,7 +48,7 @@ app.get('/', async (req, res) => {
                         auth: jwtClient
                     });
                     console.log('file uploading...');
-                    await Promise.all(torrent.files.map( async (file) => {
+                    await Promise.all(torrent.files.map(async (file) => {
                         return driveService.files.create({
                             resource: {
                                 name: file.name,
