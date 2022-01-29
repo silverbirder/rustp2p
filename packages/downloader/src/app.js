@@ -1,11 +1,10 @@
 const WebTorrent = require('webtorrent')
 const { Storage } = require('@google-cloud/storage');
-const fs = require('fs');
 
 const client = new WebTorrent();
 const storage = new Storage();
 
-async function uploadFile(filePath, destFileName) {
+const uploadFile = async (filePath, destFileName) => {
     return storage.bucket(process.env.CLOUD_STORAGE_BUCKET_NAME).upload(filePath, {
         destination: destFileName,
     });
