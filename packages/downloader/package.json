@@ -10,7 +10,7 @@
   "author": "silverbirder <silverbirder@gmail.com> (https://silver-birder.github.io/)",
   "license": "ISC",
   "dependencies": {
-    "@googleapis/drive": "^2.1.0",
+    "@google-cloud/storage": "^5.18.0",
     "dotenv": "^10.0.0",
     "express": "^4.17.1",
     "webtorrent": "^1.5.8"

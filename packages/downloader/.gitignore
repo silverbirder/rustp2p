@@ -1,5 +1,4 @@
 node_modules
-output
+output/*
 !.gitkeep
 .env
-jwt.keys.json
