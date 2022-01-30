@@ -1,4 +1,4 @@
 mod storage;
 
 pub use dotenv::dotenv;
-pub use storage::{read, write};
+pub use storage::{download, read, write};

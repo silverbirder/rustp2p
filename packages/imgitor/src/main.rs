@@ -2,9 +2,7 @@
 // extern crate rocket;
 extern crate imgitor;
 
-use std::{path::Path, fs::File, io::Cursor};
-
-use imgitor::{dotenv, read, write};
+use imgitor::{dotenv, download, read, write};
 
 // #[get("/")]
 // async fn index() -> &'static str {
@@ -22,16 +20,9 @@ use imgitor::{dotenv, read, write};
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-    // write(String::from("./lake/myfile.txt"), String::from("myfile.txt")).await;
-    let obj = read(String::from("myfile.txt")).await;
-    let url = obj.download_url(600).unwrap();
-    println!("{:?}", url);
-    let response = reqwest::get(url).await.unwrap();
-    let path = Path::new("./lake/myfile.txt");
-    let mut file = match File::create(&path) {
-        Err(why) => panic!("couldn't create {}", why),
-        Ok(file) => file,
-    };
-    let mut content = Cursor::new(response.bytes().await.unwrap());
-    std::io::copy(&mut content, &mut file).unwrap();
+    let file_name = String::from("myfile.txt");
+    let obj = read(&file_name).await;
+    let will_save_path = String::from("./lake/") + &file_name;
+    download(&obj.download_url(600).unwrap(), &will_save_path).await;
+    write(&will_save_path, &file_name).await;
 }
