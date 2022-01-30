@@ -1,0 +1,9 @@
+[package]
+name = "imgitor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dotenv = "0.15.0"
+cloud-storage = "0.10"
+tokio = { version = "1.9", features = ["full"] }
