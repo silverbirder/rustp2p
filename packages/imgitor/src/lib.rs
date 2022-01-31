@@ -3,4 +3,4 @@ mod util;
 
 pub use dotenv::dotenv;
 pub use storage::{download, read, write};
-pub use util::extract;
+pub use util::{compress, extract};
