@@ -1,10 +1,97 @@
-use std::{fs, io, path};
+use std::{
+    fs::{self},
+    io::{self, Read, Seek, Write},
+    path,
+};
+
+use walkdir::{DirEntry, WalkDir};
+use zip::{result::ZipError, write::FileOptions};
 
 extern crate zip;
 
-pub fn compress(f: &str) {
-    println!("{:?}", f);
+pub fn compress(src_dir: &str, dist_path: &str) {
+    const METHOD_STORED: Option<zip::CompressionMethod> = Some(zip::CompressionMethod::Stored);
+    #[cfg(any(
+        feature = "deflate",
+        feature = "deflate-miniz",
+        feature = "deflate-zlib"
+    ))]
+    const METHOD_DEFLATED: Option<zip::CompressionMethod> = Some(zip::CompressionMethod::Deflated);
+    #[cfg(not(any(
+        feature = "deflate",
+        feature = "deflate-miniz",
+        feature = "deflate-zlib"
+    )))]
+    const METHOD_DEFLATED: Option<zip::CompressionMethod> = None;
+    #[cfg(feature = "bzip2")]
+    const METHOD_BZIP2: Option<zip::CompressionMethod> = Some(zip::CompressionMethod::Bzip2);
+    #[cfg(not(feature = "bzip2"))]
+    const METHOD_BZIP2: Option<zip::CompressionMethod> = None;
+    #[cfg(feature = "zstd")]
+    const METHOD_ZSTD: Option<zip::CompressionMethod> = Some(zip::CompressionMethod::Zstd);
+    #[cfg(not(feature = "zstd"))]
+    const METHOD_ZSTD: Option<zip::CompressionMethod> = None;
+    for &method in [METHOD_STORED, METHOD_DEFLATED, METHOD_BZIP2, METHOD_ZSTD].iter() {
+        if method.is_none() {
+            continue;
+        }
+        match doit(src_dir, dist_path, method.unwrap()) {
+            Ok(_) => println!("done: {} written to {}", src_dir, dist_path),
+            Err(e) => println!("Error: {:?}", e),
+        }
+    }
+    fn doit(
+        src_dir: &str,
+        dst_file: &str,
+        method: zip::CompressionMethod,
+    ) -> zip::result::ZipResult<()> {
+        if !path::Path::new(src_dir).is_dir() {
+            return Err(ZipError::FileNotFound);
+        }
+        let path = path::Path::new(dst_file);
+        let file = fs::File::create(&path).unwrap();
+        let walkdir = WalkDir::new(src_dir);
+        let it = walkdir.into_iter();
+        zip_dir(&mut it.filter_map(|e| e.ok()), src_dir, file, method)?;
+        Ok(())
+    }
+
+    fn zip_dir<T>(
+        it: &mut dyn Iterator<Item = DirEntry>,
+        prefix: &str,
+        writer: T,
+        method: zip::CompressionMethod,
+    ) -> zip::result::ZipResult<()>
+    where
+        T: Write + Seek,
+    {
+        let mut zip = zip::ZipWriter::new(writer);
+        let options = FileOptions::default()
+            .compression_method(method)
+            .unix_permissions(0o755);
+        let mut buffer = Vec::new();
+        for entry in it {
+            let path = entry.path();
+            let name = path.strip_prefix(path::Path::new(prefix)).unwrap();
+            if path.is_file() {
+                println!("adding file {:?} as {:?} ...", path, name);
+                #[allow(deprecated)]
+                zip.start_file_from_path(name, options).unwrap();
+                let mut f = fs::File::open(path).unwrap();
+                f.read_to_end(&mut buffer).unwrap();
+                zip.write_all(&*buffer).unwrap();
+                buffer.clear();
+            } else if !name.as_os_str().is_empty() {
+                println!("adding dir {:?} as {:?} ...", path, name);
+                #[allow(deprecated)]
+                zip.add_directory_from_path(name, options)?;
+            }
+        }
+        zip.finish().unwrap();
+        Result::Ok(())
+    }
 }
+
 pub fn extract(f: &str, pb: &path::PathBuf) -> path::PathBuf {
     // TODO: Support file is only zip. need validation.
     let fname = std::path::Path::new(f);

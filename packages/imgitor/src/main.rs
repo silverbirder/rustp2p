@@ -28,6 +28,7 @@ async fn main() {
     // write(&will_save_path, &file_name).await;
     // let extracted_folder_path = extract("./lake/a.zip", &path::PathBuf::from("./lake"));
     // println!("{:?}", extracted_folder_path.to_str().unwrap());
-    let extracted_folde_path = String::from("./lake/a/");
-    compress(&extracted_folde_path);
+    // let extracted_folder_path = String::from("./lake/a");
+    // let dist_path = String::from("./lake/b.zip");
+    // compress(&extracted_folder_path.as_str(), &dist_path.as_str());
 }
