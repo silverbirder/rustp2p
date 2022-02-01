@@ -3,8 +3,8 @@ use std::{env, fs::File, io::Cursor, io::Read, path::Path};
 
 pub async fn read(n: &str) -> Object {
     println!("reading...");
-    let bucket_name = env::var("GCP_CLOUD_STORAGE_BUCKET_NAME")
-        .expect("GCP_CLOUD_STORAGE_BUCKET_NAME must be set");
+    let bucket_name = env::var("GCP_CLOUD_STORAGE_READ_BUCKET_NAME")
+        .expect("GCP_CLOUD_STORAGE_READ_BUCKET_NAME must be set");
     let object = Client::default()
         .object()
         .read(bucket_name.as_str(), n)
@@ -15,8 +15,8 @@ pub async fn read(n: &str) -> Object {
 
 pub async fn write(p: &str, n: &str) {
     println!("writing...");
-    let bucket_name = env::var("GCP_CLOUD_STORAGE_BUCKET_NAME")
-        .expect("GCP_CLOUD_STORAGE_BUCKET_NAME must be set");
+    let bucket_name = env::var("GCP_CLOUD_STORAGE_WRITE_BUCKET_NAME")
+        .expect("GCP_CLOUD_STORAGE_WRITE_BUCKET_NAME must be set");
     let mut bytes: Vec<u8> = Vec::new();
     for byte in File::open(p).unwrap().bytes() {
         bytes.push(byte.unwrap())

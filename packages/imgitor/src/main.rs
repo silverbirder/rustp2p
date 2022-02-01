@@ -21,14 +21,13 @@ use std::path;
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-    // let file_name = String::from("myfile.txt");
-    // let obj = read(&file_name).await;
-    // let will_save_path = String::from("./lake/") + &file_name;
-    // download(&obj.download_url(600).unwrap(), &will_save_path).await;
-    // write(&will_save_path, &file_name).await;
-    // let extracted_folder_path = extract("./lake/a.zip", &path::PathBuf::from("./lake"));
-    // println!("{:?}", extracted_folder_path.to_str().unwrap());
-    // let extracted_folder_path = String::from("./lake/a");
-    // let dist_path = String::from("./lake/b.zip");
-    // compress(&extracted_folder_path.as_str(), &dist_path.as_str());
+    let file_name = String::from("a.zip");
+    let lake = String::from("./lake/");
+    let obj = read(&file_name).await;
+    let will_save_path = lake.clone() + &file_name;
+    download(&obj.download_url(600).unwrap(), &will_save_path).await;
+    let extracted_folder_path = extract(&will_save_path, &path::PathBuf::from(lake.clone()));
+    let dist_path = will_save_path + &String::from(".custom.zip");
+    compress(&extracted_folder_path.to_str().unwrap(), &dist_path);
+    write(&dist_path, &file_name).await;
 }
