@@ -1,6 +1,6 @@
 mod storage;
-mod util;
+mod czip;
 
 pub use dotenv::dotenv;
 pub use storage::{download, read, write};
-pub use util::{compress, extract};
+pub use czip::{compress, extract};

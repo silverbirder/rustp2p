@@ -100,7 +100,6 @@ pub fn extract(f: &str, pb: &path::PathBuf) -> path::PathBuf {
     let mut archive = zip::ZipArchive::new(file).unwrap();
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).unwrap();
-        let ii = format!("{:04}.png", i);
         let mut outpath = match file.enclosed_name() {
             Some(path) => path.to_owned(),
             None => continue,
@@ -130,8 +129,6 @@ pub fn extract(f: &str, pb: &path::PathBuf) -> path::PathBuf {
                     fs::create_dir_all(&pb.join(&p)).unwrap();
                 }
             }
-            // TODO: Check file. (skip if file suffix is not kind of image.)
-            outpath.set_file_name(ii);
             let mut outfile = fs::File::create(pb.join(&outpath)).unwrap();
             io::copy(&mut file, &mut outfile).unwrap();
         }

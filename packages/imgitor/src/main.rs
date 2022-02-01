@@ -1,27 +1,24 @@
-// #[macro_use]
-// extern crate rocket;
+#[macro_use]
+extern crate rocket;
 extern crate imgitor;
 
 use imgitor::{compress, dotenv, download, extract, read, write};
 use std::path;
 
-// #[get("/")]
-// async fn index() -> &'static str {
-//     dotenv().ok();
-//     // read().await;
-//     // write().await;
-//     "Hello, world!"
-// }
+#[get("/?<n>")]
+async fn index(n: &str) -> &'static str {
+    process(n).await;
+    "Finished!"
+}
 
-// #[launch]
-// fn rocket() -> _ {
-//     rocket::build().mount("/", routes![index])
-// }
+#[launch]
+fn rocket() -> _ {
+    rocket::build().mount("/", routes![index])
+}
 
-#[tokio::main]
-async fn main() {
+async fn process(n: &str) {
     dotenv().ok();
-    let file_name = String::from("a.zip");
+    let file_name = String::from(n);
     let lake = String::from("./lake/");
     let obj = read(&file_name).await;
     let will_save_path = lake.clone() + &file_name;
