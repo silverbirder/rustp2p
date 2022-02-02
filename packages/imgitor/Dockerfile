@@ -7,9 +7,4 @@ RUN rm src/*.rs
 COPY ./src ./src
 RUN cargo install --locked --path .
 
-# @see: https://zenn.dev/ucwork/articles/acec204571362b
-FROM debian:buster-slim
-RUN apt-get update && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /usr/local/cargo/bin/imgitor .
-
-ENTRYPOINT ["./imgitor"]
+ENTRYPOINT ["imgitor"]
