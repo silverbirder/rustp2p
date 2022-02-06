@@ -837,6 +837,7 @@ dependencies = [
  "regex",
  "reqwest",
  "rocket",
+ "threadpool",
  "walkdir",
  "zip",
 ]
