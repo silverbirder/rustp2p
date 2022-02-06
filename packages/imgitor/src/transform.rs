@@ -5,8 +5,8 @@ use regex::Regex;
 use threadpool::ThreadPool;
 use walkdir::WalkDir;
 
-pub fn rename() {
-    let wark = WalkDir::new("./lake/a").sort_by_file_name();
+pub fn rename(p: &str) {
+    let wark = WalkDir::new(p).sort_by_file_name();
     let mut i = -1;
     let pool = ThreadPool::new(8);
     for a in wark {
@@ -25,8 +25,8 @@ pub fn rename() {
                 let w = img.width() as f64;
                 let h = img.height() as f64;
                 img = img.resize(
-                    ((w * 0.9).round() as i64).try_into().unwrap(),
-                    ((h * 0.9).round() as i64).try_into().unwrap(),
+                    ((w * 0.5).round() as i64).try_into().unwrap(),
+                    ((h * 0.5).round() as i64).try_into().unwrap(),
                     image::imageops::FilterType::CatmullRom,
                 );
             }
@@ -40,6 +40,7 @@ pub fn rename() {
             println!("{:?}", dist_path);
             println!("{:?}", dir.path());
             img.save(dist_path).unwrap();
+            std::fs::remove_file(dir.path()).unwrap();
         });
         i = i + 1;
     }
