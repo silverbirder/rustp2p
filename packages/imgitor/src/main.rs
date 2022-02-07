@@ -2,7 +2,8 @@
 extern crate rocket;
 extern crate imgitor;
 
-use imgitor::{compress, dotenv, download, extract, read, rename, write};
+use imgitor::{compress, dotenv, download, rar_extract, read, rename, write, zip_extract};
+use regex::Regex;
 use std::path;
 
 #[get("/?<n>")]
@@ -23,9 +24,29 @@ async fn process(n: &str) {
     let obj = read(&file_name).await;
     let will_save_path = lake.clone() + &file_name;
     download(&obj.download_url(600).unwrap(), &will_save_path).await;
-    let extracted_folder_path = extract(&will_save_path, &path::PathBuf::from(lake.clone()));
-    rename(extracted_folder_path.to_str().unwrap());
-    let dist_path = will_save_path + &String::from(".custom.zip");
-    compress(&extracted_folder_path.to_str().unwrap(), &dist_path);
-    write(&dist_path, &file_name).await;
+    let extracted_folder_path;
+    if file_name.ends_with(".rar") {
+        let re = Regex::new(r"\.rar").unwrap();
+        let file_name_exclude_suffix = re.replace_all(&file_name, "").to_string();
+        extracted_folder_path = rar_extract(
+            &will_save_path,
+            &path::PathBuf::from(lake.clone() + &file_name_exclude_suffix),
+        );
+        rename(extracted_folder_path.to_str().unwrap());
+        let dist_path = will_save_path + &String::from(".custom.zip");
+        compress(&extracted_folder_path.to_str().unwrap(), &dist_path);
+        write(
+            &dist_path,
+            &(file_name_exclude_suffix + &String::from(".zip")),
+        )
+        .await;
+    } else if file_name.ends_with(".zip") || file_name.ends_with(".cbz") {
+        extracted_folder_path = zip_extract(&will_save_path, &path::PathBuf::from(lake.clone()));
+        rename(extracted_folder_path.to_str().unwrap());
+        let dist_path = will_save_path + &String::from(".custom.zip");
+        compress(&extracted_folder_path.to_str().unwrap(), &dist_path);
+        write(&dist_path, &file_name).await;
+    } else {
+        return;
+    }
 }

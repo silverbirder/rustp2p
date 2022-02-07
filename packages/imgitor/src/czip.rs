@@ -94,6 +94,7 @@ pub fn compress(src_dir: &str, dist_path: &str) {
 
 pub fn extract(f: &str, pb: &path::PathBuf) -> path::PathBuf {
     // TODO: Support file is only zip. need validation.
+    // support zip (and cbz)
     let fname = std::path::Path::new(f);
     let file = fs::File::open(&fname).unwrap();
     let mut extracted_folder_path = path::PathBuf::from("");
