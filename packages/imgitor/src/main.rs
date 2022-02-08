@@ -37,11 +37,14 @@ async fn process(n: &str) {
         compress(&extracted_folder_path.to_str().unwrap(), &dist_path);
         write(
             &dist_path,
-            &(file_name_exclude_suffix + &String::from(".zip")),
+            &(file_name_exclude_suffix.clone() + &String::from(".zip")),
         )
         .await;
     } else if file_name.ends_with(".zip") || file_name.ends_with(".cbz") {
-        extracted_folder_path = zip_extract(&will_save_path, &path::PathBuf::from(lake.clone()));
+        zip_extract(&will_save_path, &path::PathBuf::from(lake.clone()));
+        let re = Regex::new(r"\.(zip|cbz)").unwrap();
+        let file_name_exclude_suffix = re.replace_all(&file_name, "").to_string();
+        let extracted_folder_path = path::PathBuf::from(lake.clone() + &file_name_exclude_suffix);
         rename(extracted_folder_path.to_str().unwrap());
         let dist_path = will_save_path + &String::from(".custom.zip");
         compress(&extracted_folder_path.to_str().unwrap(), &dist_path);
