@@ -106,10 +106,10 @@ pub fn rename(p: &str) {
     // }
 }
 
-pub fn reimage() {
-    println!("reimage");
-}
-
-pub fn reduce() {
-    println!("reduce");
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        assert_eq!(2 + 2, 4);
+    }
 }
