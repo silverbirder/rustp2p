@@ -1,9 +1,21 @@
-use std::thread::spawn;
+use std::{thread::spawn, ops::Deref, io::Write};
 
 use image::GenericImageView;
 use regex::Regex;
 use threadpool::ThreadPool;
 use walkdir::WalkDir;
+use webp::Encoder;
+use std::fs::File;
+
+pub fn convert(p: &str) {
+    let a = Encoder::from_image(&image::open(p).unwrap()).unwrap().encode_lossless();
+    
+    let b = a.deref();
+    let c = format!("{}.webp", p);
+    let mut file = File::create(c).unwrap();
+    file.write_all(b).unwrap();
+    file.flush().unwrap();
+}
 
 pub fn rename(p: &str) {
     let wark = WalkDir::new(p).sort_by_file_name();
