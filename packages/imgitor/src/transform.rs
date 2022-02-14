@@ -118,10 +118,27 @@ pub fn rename(p: &str) {
     // }
 }
 
+struct Transform {
+}
+
+impl Transform {
+    fn execute(&self) {
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::transform::Transform;
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn transform_main_pass() {
+        // Arrange
+        let t = Transform{};
+
+        // Act
+        let result = t.execute();
+
+        // Assert
+        assert_eq!(result, 4);
     }
 }
