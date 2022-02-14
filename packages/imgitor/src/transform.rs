@@ -1,4 +1,4 @@
-use std::{io::Write, ops::Deref, path::Path, thread::spawn};
+use std::{io::Write, ops::Deref, path::{Path, PathBuf}, thread::spawn};
 
 use image::GenericImageView;
 use regex::Regex;
@@ -121,13 +121,13 @@ pub fn rename(p: &str) {
 }
 
 struct Transform {
-    a: String,
+    src_dir: PathBuf,
 }
 
 impl Transform {
-    fn execute(&self) -> Result<i64, i64> {
-        if self.a.is_empty() {
-            Err(0)
+    fn execute(&self) -> Result<i64, String> {
+        if !self.src_dir.is_dir() {
+            Err(format!("{:?}", self.src_dir))
         } else {
             Ok(1)
         }
@@ -137,12 +137,13 @@ impl Transform {
 #[cfg(test)]
 mod tests {
     use crate::transform::Transform;
+    use std::path::PathBuf;
 
     #[test]
     fn transform_main_pass() {
         // Arrange
         let t = Transform {
-            a: String::from("test"),
+            src_dir: PathBuf::from(".")
         };
 
         // Act
@@ -151,7 +152,7 @@ mod tests {
         // Assert
         match result {
             Ok(_) => assert!(true, ""),
-            Err(_) => assert!(false, ""),
+            Err(m) => assert!(false, "{:?}", m),
         }
     }
 }
