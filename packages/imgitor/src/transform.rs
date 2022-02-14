@@ -1,15 +1,17 @@
-use std::{thread::spawn, ops::Deref, io::Write};
+use std::{io::Write, ops::Deref, path::Path, thread::spawn};
 
 use image::GenericImageView;
 use regex::Regex;
+use std::fs::File;
 use threadpool::ThreadPool;
 use walkdir::WalkDir;
 use webp::Encoder;
-use std::fs::File;
 
 pub fn convert(p: &str) {
-    let a = Encoder::from_image(&image::open(p).unwrap()).unwrap().encode_lossless();
-    
+    let a = Encoder::from_image(&image::open(p).unwrap())
+        .unwrap()
+        .encode_lossless();
+
     let b = a.deref();
     let c = format!("{}.webp", p);
     let mut file = File::create(c).unwrap();
@@ -119,10 +121,16 @@ pub fn rename(p: &str) {
 }
 
 struct Transform {
+    a: String,
 }
 
 impl Transform {
-    fn execute(&self) {
+    fn execute(&self) -> Result<i64, i64> {
+        if self.a.is_empty() {
+            Err(0)
+        } else {
+            Ok(1)
+        }
     }
 }
 
@@ -133,12 +141,17 @@ mod tests {
     #[test]
     fn transform_main_pass() {
         // Arrange
-        let t = Transform{};
+        let t = Transform {
+            a: String::from("test"),
+        };
 
         // Act
         let result = t.execute();
 
         // Assert
-        assert_eq!(result, 4);
+        match result {
+            Ok(_) => assert!(true, ""),
+            Err(_) => assert!(false, ""),
+        }
     }
 }
