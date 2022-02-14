@@ -1,4 +1,9 @@
-use std::{io::Write, ops::Deref, path::{Path, PathBuf}, thread::spawn};
+use std::{
+    io::Write,
+    ops::Deref,
+    path::{Path, PathBuf},
+    thread::spawn,
+};
 
 use image::GenericImageView;
 use regex::Regex;
@@ -127,7 +132,10 @@ struct Transform {
 impl Transform {
     fn execute(&self) -> Result<i64, String> {
         if !self.src_dir.is_dir() {
-            Err(format!("{:?}", self.src_dir))
+            Err(format!(
+                "{:?} is not directory. expected value is directory.",
+                self.src_dir
+            ))
         } else {
             Ok(1)
         }
@@ -143,7 +151,7 @@ mod tests {
     fn transform_main_pass() {
         // Arrange
         let t = Transform {
-            src_dir: PathBuf::from(".")
+            src_dir: PathBuf::from("."),
         };
 
         // Act
@@ -153,6 +161,23 @@ mod tests {
         match result {
             Ok(_) => assert!(true, ""),
             Err(m) => assert!(false, "{:?}", m),
+        }
+    }
+
+    #[test]
+    fn transform_main_failed() {
+        // Arrange
+        let t = Transform {
+            src_dir: PathBuf::from("./README.md"),
+        };
+
+        // Act
+        let result = t.execute();
+
+        // Assert
+        match result {
+            Ok(_) => assert!(false, ""),
+            Err(_) => assert!(true, ""),
         }
     }
 }
