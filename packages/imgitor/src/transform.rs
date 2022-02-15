@@ -129,16 +129,23 @@ struct Transform {
     src_dir: PathBuf,
 }
 
-impl Transform {
-    fn execute(&self) -> Result<i64, String> {
+pub trait TransformTrait {
+    fn check_fields(&self) -> Result<i64, String>;
+    fn convert(&self) -> String;
+}
+
+impl TransformTrait for Transform {
+    fn check_fields(&self) -> Result<i64, String> {
         if !self.src_dir.is_dir() {
-            Err(format!(
+            return Err(format!(
                 "{:?} is not directory. expected value is directory.",
                 self.src_dir
             ))
-        } else {
-            Ok(1)
         }
+        Ok(1)
+    }
+    fn convert(&self) -> String {
+        String::from("")
     }
 }
 
@@ -147,15 +154,17 @@ mod tests {
     use crate::transform::Transform;
     use std::path::PathBuf;
 
+    use super::TransformTrait;
+
     #[test]
-    fn transform_main_pass() {
+    fn transform_check_fields_is_ok() {
         // Arrange
         let t = Transform {
             src_dir: PathBuf::from("."),
         };
 
         // Act
-        let result = t.execute();
+        let result = t.check_fields();
 
         // Assert
         match result {
@@ -165,19 +174,33 @@ mod tests {
     }
 
     #[test]
-    fn transform_main_failed() {
+    fn transform_check_fields_is_ng() {
         // Arrange
         let t = Transform {
             src_dir: PathBuf::from("./README.md"),
         };
 
         // Act
-        let result = t.execute();
+        let result = t.check_fields();
 
         // Assert
         match result {
             Ok(_) => assert!(false, ""),
             Err(_) => assert!(true, ""),
         }
+    }
+
+    #[test]
+    fn transform_convert_to_webp() {
+        // Arrange
+        let t = Transform {
+            src_dir: PathBuf::from("."),
+        };
+
+        // Act
+        let result = t.convert();
+
+        // Assert
+        assert_eq!(result, "");
     }
 }
