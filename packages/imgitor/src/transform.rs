@@ -2,7 +2,7 @@ use std::{
     io::Write,
     ops::Deref,
     path::{Path, PathBuf},
-    thread::spawn,
+    thread::spawn, fs::DirEntry,
 };
 
 use image::GenericImageView;
@@ -132,8 +132,8 @@ struct Transform {
 
 pub trait TransformTrait {
     fn check_fields(&self) -> Result<i64, String>;
-    fn walk_dir<F: FnOnce() + Send + 'static + Copy>(&self, f: F);
-    fn convert();
+    fn walk_dir<F: Fn(walkdir::DirEntry) + Send + 'static + Copy>(&self, f: F);
+    fn convert(d: walkdir::DirEntry);
 }
 
 impl TransformTrait for Transform {
@@ -146,18 +146,23 @@ impl TransformTrait for Transform {
         }
         Ok(1)
     }
-    fn walk_dir<F: FnOnce() + Send + 'static + Copy>(&self, f: F) {
+    fn walk_dir<F: Fn(walkdir::DirEntry) + Send + 'static + Copy>(&self, f: F) {
         let wark = WalkDir::new(&self.src_dir).sort_by_file_name();
         let pool = ThreadPool::new(self.thread_pool_num);
         for file in wark {
-            pool.execute(move|| {
-                f();
-            });
+            match file {
+                Err(_) => {},
+                Ok(dir) => {
+                    pool.execute(move|| {
+                        f(dir);
+                    });
+                }
+            }
         }
         pool.join();
     }
-    fn convert() {
-        println!("HEEEEEEEEEEEEEE");
+    fn convert(d: walkdir::DirEntry) {
+        println!("{:?}", d.file_name());
     }
 }
 
@@ -208,7 +213,7 @@ mod tests {
     fn transform_convert_to_webp() {
         // Arrange
         let t = Transform {
-            src_dir: PathBuf::from("."),
+            src_dir: PathBuf::from("./lake/a/"),
             thread_pool_num: 8
         };
 
