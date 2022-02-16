@@ -127,11 +127,13 @@ pub fn rename(p: &str) {
 
 struct Transform {
     src_dir: PathBuf,
+    thread_pool_num: usize,
 }
 
 pub trait TransformTrait {
     fn check_fields(&self) -> Result<i64, String>;
-    fn convert(&self) -> String;
+    fn walk_dir<F: FnOnce() + Send + 'static + Copy>(&self, f: F);
+    fn convert();
 }
 
 impl TransformTrait for Transform {
@@ -144,8 +146,18 @@ impl TransformTrait for Transform {
         }
         Ok(1)
     }
-    fn convert(&self) -> String {
-        String::from("")
+    fn walk_dir<F: FnOnce() + Send + 'static + Copy>(&self, f: F) {
+        let wark = WalkDir::new(&self.src_dir).sort_by_file_name();
+        let pool = ThreadPool::new(self.thread_pool_num);
+        for file in wark {
+            pool.execute(move|| {
+                f();
+            });
+        }
+        pool.join();
+    }
+    fn convert() {
+        println!("HEEEEEEEEEEEEEE");
     }
 }
 
@@ -161,6 +173,7 @@ mod tests {
         // Arrange
         let t = Transform {
             src_dir: PathBuf::from("."),
+            thread_pool_num: 8
         };
 
         // Act
@@ -178,6 +191,7 @@ mod tests {
         // Arrange
         let t = Transform {
             src_dir: PathBuf::from("./README.md"),
+            thread_pool_num: 8
         };
 
         // Act
@@ -195,12 +209,13 @@ mod tests {
         // Arrange
         let t = Transform {
             src_dir: PathBuf::from("."),
+            thread_pool_num: 8
         };
 
         // Act
-        let result = t.convert();
+        let result = t.walk_dir(Transform::convert);
 
         // Assert
-        assert_eq!(result, "");
+        // assert_eq!(result, "");
     }
 }
