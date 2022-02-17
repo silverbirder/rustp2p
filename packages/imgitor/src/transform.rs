@@ -177,6 +177,8 @@ impl TransformTrait for Transform {
 
 #[cfg(test)]
 mod tests {
+    use walkdir::WalkDir;
+
     use crate::transform::Transform;
     use std::path::PathBuf;
 
@@ -219,7 +221,7 @@ mod tests {
     }
 
     #[test]
-    fn transform_convert_to_webp() {
+    fn transform_pass_walk_dir() {
         // Arrange
         let t = Transform {
             src_dir: PathBuf::from("./lake/a/"),
@@ -231,5 +233,19 @@ mod tests {
 
         // Assert
         assert_eq!(result, "OK");
+    }
+
+
+    #[test]
+    fn transform_convert() {
+        // Arrange
+        let d = WalkDir::new(PathBuf::from("."));
+        let f = d.into_iter().last().unwrap().unwrap();
+
+        // Act
+        let result = Transform::convert(f);
+
+        // Assert
+        assert_eq!(result, 1);
     }
 }
