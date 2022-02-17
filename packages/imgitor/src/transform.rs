@@ -2,7 +2,7 @@ use std::{
     io::Write,
     ops::Deref,
     path::{Path, PathBuf},
-    thread::spawn, fs::DirEntry,
+    thread::spawn, fs::DirEntry, sync::mpsc,
 };
 
 use image::GenericImageView;
@@ -132,8 +132,8 @@ struct Transform {
 
 pub trait TransformTrait {
     fn check_fields(&self) -> Result<i64, String>;
-    fn walk_dir<F: Fn(walkdir::DirEntry) + Send + 'static + Copy>(&self, f: F);
-    fn convert(d: walkdir::DirEntry);
+    fn walk_dir<F: (Fn(walkdir::DirEntry) -> i64) + Send + 'static + Copy>(&self, f: F) -> String;
+    fn convert(d: walkdir::DirEntry) -> i64;
 }
 
 impl TransformTrait for Transform {
@@ -146,9 +146,10 @@ impl TransformTrait for Transform {
         }
         Ok(1)
     }
-    fn walk_dir<F: Fn(walkdir::DirEntry) + Send + 'static + Copy>(&self, f: F) {
+    fn walk_dir<F: (Fn(walkdir::DirEntry) -> i64) + Send + 'static + Copy>(&self, f: F) -> String {
         let wark = WalkDir::new(&self.src_dir).sort_by_file_name();
         let pool = ThreadPool::new(self.thread_pool_num);
+        // let (tx, rx) = mpsc::channel();
         for file in wark {
             match file {
                 Err(_) => {},
@@ -160,9 +161,17 @@ impl TransformTrait for Transform {
             }
         }
         pool.join();
+        return String::from("OK");
     }
-    fn convert(d: walkdir::DirEntry) {
-        println!("{:?}", d.file_name());
+    fn convert(d: walkdir::DirEntry) -> i64 {
+        let file_type = d.file_type();
+        if file_type.is_dir() {
+            println!("{:?} is dir", file_type);
+        } else if file_type.is_file() {
+            println!("{:?} is file", file_type);
+        } else {
+        }
+        return 1;
     }
 }
 
@@ -221,6 +230,6 @@ mod tests {
         let result = t.walk_dir(Transform::convert);
 
         // Assert
-        // assert_eq!(result, "");
+        assert_eq!(result, "OK");
     }
 }
