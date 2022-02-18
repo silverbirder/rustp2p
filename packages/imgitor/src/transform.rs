@@ -1,28 +1,10 @@
-use std::{
-    io::Write,
-    ops::Deref,
-    path::{Path, PathBuf},
-    thread::spawn, fs::DirEntry, sync::mpsc,
-};
+use std::{io::Write, ops::Deref, path::PathBuf};
 
-use image::GenericImageView;
-use regex::Regex;
+use image::{GenericImageView, ImageFormat};
 use std::fs::File;
 use threadpool::ThreadPool;
 use walkdir::WalkDir;
 use webp::Encoder;
-
-pub fn convert(p: &str) {
-    let a = Encoder::from_image(&image::open(p).unwrap())
-        .unwrap()
-        .encode_lossless();
-
-    let b = a.deref();
-    let c = format!("{}.webp", p);
-    let mut file = File::create(c).unwrap();
-    file.write_all(b).unwrap();
-    file.flush().unwrap();
-}
 
 pub fn rename(p: &str) {
     let wark = WalkDir::new(p).sort_by_file_name();
@@ -142,7 +124,7 @@ impl TransformTrait for Transform {
             return Err(format!(
                 "{:?} is not directory. expected value is directory.",
                 self.src_dir
-            ))
+            ));
         }
         Ok(1)
     }
@@ -152,9 +134,9 @@ impl TransformTrait for Transform {
         // let (tx, rx) = mpsc::channel();
         for file in wark {
             match file {
-                Err(_) => {},
+                Err(_) => {}
                 Ok(dir) => {
-                    pool.execute(move|| {
+                    pool.execute(move || {
                         f(dir);
                     });
                 }
@@ -164,13 +146,14 @@ impl TransformTrait for Transform {
         return String::from("OK");
     }
     fn convert(d: walkdir::DirEntry) -> i64 {
-        let file_type = d.file_type();
-        if file_type.is_dir() {
-            println!("{:?} is dir", file_type);
-        } else if file_type.is_file() {
-            println!("{:?} is file", file_type);
-        } else {
-        }
+        // support encode format is jpeg only..?
+        let img = image::open(d.path()).unwrap();
+        let wpm = Encoder::from_image(&img).unwrap().encode_lossless();
+        let wpmd = wpm.deref();
+        let webp_path = format!("{}.webp", d.path().display());
+        let mut file = File::create(webp_path).unwrap();
+        file.write_all(wpmd).unwrap();
+        file.flush().unwrap();
         return 1;
     }
 }
@@ -189,7 +172,7 @@ mod tests {
         // Arrange
         let t = Transform {
             src_dir: PathBuf::from("."),
-            thread_pool_num: 8
+            thread_pool_num: 8,
         };
 
         // Act
@@ -207,7 +190,7 @@ mod tests {
         // Arrange
         let t = Transform {
             src_dir: PathBuf::from("./README.md"),
-            thread_pool_num: 8
+            thread_pool_num: 8,
         };
 
         // Act
@@ -225,21 +208,23 @@ mod tests {
         // Arrange
         let t = Transform {
             src_dir: PathBuf::from("./lake/a/"),
-            thread_pool_num: 8
+            thread_pool_num: 8,
         };
+        fn sample(d: walkdir::DirEntry) -> i64 {
+            1
+        }
 
         // Act
-        let result = t.walk_dir(Transform::convert);
+        let result = t.walk_dir(sample);
 
         // Assert
         assert_eq!(result, "OK");
     }
 
-
     #[test]
     fn transform_convert() {
         // Arrange
-        let d = WalkDir::new(PathBuf::from("."));
+        let d = WalkDir::new(PathBuf::from("./samples/transform_convert"));
         let f = d.into_iter().last().unwrap().unwrap();
 
         // Act

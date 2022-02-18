@@ -2,7 +2,7 @@
 extern crate rocket;
 extern crate imgitor;
 
-use imgitor::{compress, convert, dotenv, download, rar_extract, read, rename, write, zip_extract};
+use imgitor::{compress, dotenv, download, rar_extract, read, rename, write, zip_extract};
 use regex::Regex;
 use std::path;
 
