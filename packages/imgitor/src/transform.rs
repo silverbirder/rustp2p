@@ -116,6 +116,7 @@ pub trait TransformTrait {
     fn check_fields(&self) -> Result<i64, String>;
     fn walk_dir<F: (Fn(&PathBuf) -> PathBuf) + Send + Clone + 'static>(&self, f: F) -> usize;
     fn convert(p: &PathBuf) -> PathBuf;
+    fn resize(p: &PathBuf) -> PathBuf;
 }
 
 impl TransformTrait for Transform {
@@ -137,28 +138,46 @@ impl TransformTrait for Transform {
             match file {
                 Err(_) => {}
                 Ok(dir) => {
-                    let moved_f = f.to_owned();
-                    let moved_tx = tx.to_owned();
-                    pool.execute(move || {
-                        let p = moved_f(&PathBuf::from(dir.path()));
-                        moved_tx.send(p).unwrap();
-                    });
+                    if dir.file_type().is_file() {
+                        let moved_f = f.to_owned();
+                        let moved_tx = tx.to_owned();
+                        pool.execute(move || {
+                            let p = moved_f(&PathBuf::from(dir.path()));
+                            moved_tx.send(p).unwrap();
+                        });
+                        inc = inc + 1;
+                    }
                 }
             }
-            inc = inc + 1;
         }
         pool.join();
         let count = rx.iter().take(inc).count();
         return count;
     }
     fn convert(p: &PathBuf) -> PathBuf {
-        if p.is_dir() {
-            return p.to_path_buf();
-        }
         let img = image::open(p.as_path()).unwrap();
         let wpm = Encoder::from_image(&img).unwrap().encode_lossless();
         let wpmd = wpm.deref();
         let webp_path = format!("{}.webp", p.as_path().display());
+        let mut file = File::create(&webp_path).unwrap();
+        file.write_all(wpmd).unwrap();
+        file.flush().unwrap();
+        return PathBuf::from(webp_path);
+    }
+    fn resize(p: &PathBuf) -> PathBuf {
+        let mut img = image::open(p.as_path()).unwrap();
+        while img.width() * img.height() > 500 * 1000 {
+            let w = img.width() as f64;
+            let h = img.height() as f64;
+            img = img.resize(
+                ((w * 0.9).round() as i64).try_into().unwrap(),
+                ((h * 0.9).round() as i64).try_into().unwrap(),
+                image::imageops::FilterType::CatmullRom,
+            );
+        }
+        let wpm = Encoder::from_image(&img).unwrap().encode_lossless();
+        let wpmd = wpm.deref();
+        let webp_path = format!("{}.resize.webp", p.as_path().display()); // todo: delete suffix webp.
         let mut file = File::create(&webp_path).unwrap();
         file.write_all(wpmd).unwrap();
         file.flush().unwrap();
@@ -224,21 +243,48 @@ mod tests {
         let result = t.walk_dir(sample);
 
         // Assert
-        assert_eq!(result, 2);
+        assert_eq!(result, 1);
     }
 
     #[test]
     fn transform_convert() {
         // Arrange
-        let p = PathBuf::from("./samples/transform_convert/png.png");
+        let p = PathBuf::from("./samples/transform_convert/rust-social-wide.jpeg");
 
         // Act
         let result = Transform::convert(&p);
 
         // Assert
-        assert_eq!(result.to_str().unwrap(), "./samples/transform_convert/png.png.webp");
+        assert_eq!(
+            result.to_str().unwrap(),
+            "./samples/transform_convert/rust-social-wide.jpeg.webp"
+        );
 
         // Teardown
-        std::fs::remove_file("./samples/transform_convert/png.png.webp").unwrap();
+        std::fs::remove_file("./samples/transform_convert/rust-social-wide.jpeg.webp").unwrap();
     }
+
+    #[test]
+    fn transform_rename() {}
+
+    #[test]
+    fn transform_resize() {
+        // Arrange
+        let p = PathBuf::from("./samples/transform_resize/rust-social-wide.webp");
+
+        // Act
+        let result = Transform::resize(&p);
+
+        // Assert
+        assert_eq!(
+            result.to_str().unwrap(),
+            "./samples/transform_resize/rust-social-wide.webp.resize.webp"
+        );
+
+        // Teardown
+        std::fs::remove_file("./samples/transform_resize/rust-social-wide.webp.resize.webp").unwrap();
+    }
+
+    #[test]
+    fn transform_split() {}
 }
