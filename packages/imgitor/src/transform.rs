@@ -1,6 +1,6 @@
-use std::{io::Write, ops::Deref, path::PathBuf};
+use std::{io::Write, ops::Deref, path::PathBuf, sync::mpsc};
 
-use image::{GenericImageView, ImageFormat};
+use image::GenericImageView;
 use std::fs::File;
 use threadpool::ThreadPool;
 use walkdir::WalkDir;
@@ -114,8 +114,8 @@ struct Transform {
 
 pub trait TransformTrait {
     fn check_fields(&self) -> Result<i64, String>;
-    fn walk_dir<F: (Fn(walkdir::DirEntry) -> i64) + Send + 'static + Copy>(&self, f: F) -> String;
-    fn convert(d: walkdir::DirEntry) -> i64;
+    fn walk_dir<F: (Fn(&PathBuf) -> PathBuf) + Send + Clone + 'static>(&self, f: F) -> usize;
+    fn convert(p: &PathBuf) -> PathBuf;
 }
 
 impl TransformTrait for Transform {
@@ -128,40 +128,46 @@ impl TransformTrait for Transform {
         }
         Ok(1)
     }
-    fn walk_dir<F: (Fn(walkdir::DirEntry) -> i64) + Send + 'static + Copy>(&self, f: F) -> String {
+    fn walk_dir<F: (Fn(&PathBuf) -> PathBuf) + Send + Clone + 'static>(&self, f: F) -> usize {
         let wark = WalkDir::new(&self.src_dir).sort_by_file_name();
         let pool = ThreadPool::new(self.thread_pool_num);
-        // let (tx, rx) = mpsc::channel();
+        let (tx, rx) = mpsc::channel();
+        let mut inc = 0;
         for file in wark {
             match file {
                 Err(_) => {}
                 Ok(dir) => {
+                    let moved_f = f.to_owned();
+                    let moved_tx = tx.to_owned();
                     pool.execute(move || {
-                        f(dir);
+                        let p = moved_f(&PathBuf::from(dir.path()));
+                        moved_tx.send(p).unwrap();
                     });
                 }
             }
+            inc = inc + 1;
         }
         pool.join();
-        return String::from("OK");
+        let count = rx.iter().take(inc).count();
+        return count;
     }
-    fn convert(d: walkdir::DirEntry) -> i64 {
-        // support encode format is jpeg only..?
-        let img = image::open(d.path()).unwrap();
+    fn convert(p: &PathBuf) -> PathBuf {
+        if p.is_dir() {
+            return p.to_path_buf();
+        }
+        let img = image::open(p.as_path()).unwrap();
         let wpm = Encoder::from_image(&img).unwrap().encode_lossless();
         let wpmd = wpm.deref();
-        let webp_path = format!("{}.webp", d.path().display());
-        let mut file = File::create(webp_path).unwrap();
+        let webp_path = format!("{}.webp", p.as_path().display());
+        let mut file = File::create(&webp_path).unwrap();
         file.write_all(wpmd).unwrap();
         file.flush().unwrap();
-        return 1;
+        return PathBuf::from(webp_path);
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use walkdir::WalkDir;
-
     use crate::transform::Transform;
     use std::path::PathBuf;
 
@@ -207,30 +213,32 @@ mod tests {
     fn transform_pass_walk_dir() {
         // Arrange
         let t = Transform {
-            src_dir: PathBuf::from("./lake/a/"),
+            src_dir: PathBuf::from("./samples/transform_pass_walk_dir"),
             thread_pool_num: 8,
         };
-        fn sample(d: walkdir::DirEntry) -> i64 {
-            1
+        fn sample(p: &PathBuf) -> PathBuf {
+            p.to_path_buf()
         }
 
         // Act
         let result = t.walk_dir(sample);
 
         // Assert
-        assert_eq!(result, "OK");
+        assert_eq!(result, 2);
     }
 
     #[test]
     fn transform_convert() {
         // Arrange
-        let d = WalkDir::new(PathBuf::from("./samples/transform_convert"));
-        let f = d.into_iter().last().unwrap().unwrap();
+        let p = PathBuf::from("./samples/transform_convert/png.png");
 
         // Act
-        let result = Transform::convert(f);
+        let result = Transform::convert(&p);
 
         // Assert
-        assert_eq!(result, 1);
+        assert_eq!(result.to_str().unwrap(), "./samples/transform_convert/png.png.webp");
+
+        // Teardown
+        std::fs::remove_file("./samples/transform_convert/png.png.webp").unwrap();
     }
 }
