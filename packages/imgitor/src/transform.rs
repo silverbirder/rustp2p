@@ -1,6 +1,6 @@
 use std::{io::Write, ops::Deref, path::PathBuf, sync::mpsc};
 
-use image::GenericImageView;
+use image::{DynamicImage, GenericImageView};
 use std::fs::File;
 use threadpool::ThreadPool;
 use walkdir::WalkDir;
@@ -46,65 +46,6 @@ pub fn rename(p: &str) {
         i = i + 1;
     }
     pool.join();
-    // for a in wark {
-    //     let dir = a.unwrap();
-    //     if dir.file_type().is_dir() {
-    //         continue;
-    //     }
-    //     let result = image::open(dir.path());
-    //     if result.is_err() {
-    //         continue;
-    //     }
-    //     let mut img = result.unwrap();
-    //     let s = format!("{:08}", i);
-    //     let dir_path = dir.path().to_str().unwrap().replace(dir.file_name().to_str().unwrap(), "");
-    //     let dist_path = dir_path + &s + ".jpeg";
-    //     if img.width() > img.height() {
-    //         let mut left_img = img.crop(0, 0, img.width() / 2, img.height());
-    //         let mut right_img = img.crop(img.width() / 2, 0, img.width() / 2, img.height());
-    //         while left_img.width() * left_img.height() > 500 * 1000 {
-    //             println!("{:?}", left_img.dimensions());
-    //             let w = left_img.width() as f64;
-    //             let h = left_img.height() as f64;
-    //             left_img = left_img.resize(
-    //                 ((w * 0.9).round() as i64).try_into().unwrap(),
-    //                 ((h * 0.9).round() as i64).try_into().unwrap(),
-    //                 image::imageops::FilterType::CatmullRom,
-    //             );
-    //         }
-    //         left_img.save(dist_path).unwrap();
-    //         i = i + 1;
-
-    //         while right_img.width() * right_img.height() > 500 * 1000 {
-    //             println!("{:?}", right_img.dimensions());
-    //             let w = right_img.width() as f64;
-    //             let h = right_img.height() as f64;
-    //             right_img = right_img.resize(
-    //                 ((w * 0.9).round() as i64).try_into().unwrap(),
-    //                 ((h * 0.9).round() as i64).try_into().unwrap(),
-    //                 image::imageops::FilterType::CatmullRom,
-    //             );
-    //         }
-    //         let s = format!("{:08}", i);
-    //         let dir_path = dir.path().to_str().unwrap().replace(dir.file_name().to_str().unwrap(), "");
-    //         let dist_path = dir_path + &s + ".jpeg";
-    //         right_img.save(dist_path).unwrap();
-    //         i = i + 1;
-    //     } else {
-    //         while img.width() * img.height() > 500 * 1000 {
-    //             println!("{:?}", img.dimensions());
-    //             let w = img.width() as f64;
-    //             let h = img.height() as f64;
-    //             img = img.resize(
-    //                 ((w * 0.9).round() as i64).try_into().unwrap(),
-    //                 ((h * 0.9).round() as i64).try_into().unwrap(),
-    //                 image::imageops::FilterType::CatmullRom,
-    //             );
-    //         }
-    //         i = i + 1;
-    //         img.save(dist_path).unwrap();
-    //     }
-    // }
 }
 
 struct Transform {
@@ -115,8 +56,10 @@ struct Transform {
 pub trait TransformTrait {
     fn check_fields(&self) -> Result<i64, String>;
     fn walk_dir<F: (Fn(&PathBuf) -> PathBuf) + Send + Clone + 'static>(&self, f: F) -> usize;
+    fn encode_webp(img: DynamicImage, path: &PathBuf);
     fn convert(p: &PathBuf) -> PathBuf;
     fn resize(p: &PathBuf) -> PathBuf;
+    fn split(p: &PathBuf) -> PathBuf;
 }
 
 impl TransformTrait for Transform {
@@ -154,15 +97,18 @@ impl TransformTrait for Transform {
         let count = rx.iter().take(inc).count();
         return count;
     }
-    fn convert(p: &PathBuf) -> PathBuf {
-        let img = image::open(p.as_path()).unwrap();
+    fn encode_webp(img: DynamicImage, path: &PathBuf) {
         let wpm = Encoder::from_image(&img).unwrap().encode_lossless();
         let wpmd = wpm.deref();
-        let webp_path = format!("{}.webp", p.as_path().display());
-        let mut file = File::create(&webp_path).unwrap();
+        let mut file = File::create(&path).unwrap();
         file.write_all(wpmd).unwrap();
         file.flush().unwrap();
-        return PathBuf::from(webp_path);
+    }
+    fn convert(p: &PathBuf) -> PathBuf {
+        let img = image::open(p.as_path()).unwrap();
+        let webp_path = PathBuf::from(format!("{}.webp", p.as_path().display()));
+        Self::encode_webp(img, &webp_path);
+        return webp_path;
     }
     fn resize(p: &PathBuf) -> PathBuf {
         let mut img = image::open(p.as_path()).unwrap();
@@ -175,13 +121,24 @@ impl TransformTrait for Transform {
                 image::imageops::FilterType::CatmullRom,
             );
         }
-        let wpm = Encoder::from_image(&img).unwrap().encode_lossless();
-        let wpmd = wpm.deref();
-        let webp_path = format!("{}.resize.webp", p.as_path().display()); // todo: delete suffix webp.
-        let mut file = File::create(&webp_path).unwrap();
-        file.write_all(wpmd).unwrap();
-        file.flush().unwrap();
+        let webp_path = PathBuf::from(format!("{}.resize.webp", p.as_path().display()));
+        Self::encode_webp(img, &webp_path);
         return PathBuf::from(webp_path);
+    }
+    fn split(p: &PathBuf) -> PathBuf {
+        let mut img = image::open(p.as_path()).unwrap();
+        if img.height() >= img.width() {
+            let a = p.to_path_buf();
+            return a;
+        }
+        let left_img = img.crop(0, 0, img.width() / 2, img.height());
+        let left_webp_path = PathBuf::from(format!("{}.split.left.webp", p.as_path().display()));
+        Self::encode_webp(left_img, &left_webp_path);
+
+        let right_img = img.crop(img.width() / 2, 0, img.width() / 2, img.height());
+        let right_webp_path = PathBuf::from(format!("{}.split.right.webp", p.as_path().display()));
+        Self::encode_webp(right_img, &right_webp_path);
+        return left_webp_path;
     }
 }
 
@@ -282,9 +239,28 @@ mod tests {
         );
 
         // Teardown
-        std::fs::remove_file("./samples/transform_resize/rust-social-wide.webp.resize.webp").unwrap();
+        std::fs::remove_file("./samples/transform_resize/rust-social-wide.webp.resize.webp")
+            .unwrap();
     }
 
     #[test]
-    fn transform_split() {}
+    fn transform_split() {
+        // Arrange
+        let p = PathBuf::from("./samples/transform_split/rust-social-wide.webp");
+
+        // Act
+        let result = Transform::split(&p);
+
+        // Assert
+        assert_eq!(
+            result.to_str().unwrap(),
+            "./samples/transform_split/rust-social-wide.webp.split.left.webp"
+        );
+
+        // Teardown
+        std::fs::remove_file("./samples/transform_split/rust-social-wide.webp.split.left.webp")
+            .unwrap();
+        std::fs::remove_file("./samples/transform_split/rust-social-wide.webp.split.right.webp")
+            .unwrap();
+    }
 }
