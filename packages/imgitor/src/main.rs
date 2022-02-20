@@ -2,7 +2,7 @@
 extern crate rocket;
 extern crate imgitor;
 
-use imgitor::{compress, dotenv, download, rar_extract, read, rename, write, zip_extract};
+use imgitor::{compress, dotenv, download, rar_extract, read, rename, write, zip_extract, Transform, TransformTrait};
 use regex::Regex;
 use std::path;
 
@@ -32,7 +32,12 @@ async fn process(n: &str) {
             &will_save_path,
             &path::PathBuf::from(lake.clone() + &file_name_exclude_suffix),
         );
-        rename(extracted_folder_path.to_str().unwrap());
+        let t = Transform{ 
+            src_dir: &extracted_folder_path, 
+            thread_pool_num: 8 };
+        t.walk_dir(Transform::convert, true);
+        t.walk_dir(Transform::split, true);
+        t.walk_dir(Transform::resize, true); 
         let dist_path = will_save_path + &String::from(".custom.zip");
         compress(&extracted_folder_path.to_str().unwrap(), &dist_path);
         write(
@@ -45,7 +50,13 @@ async fn process(n: &str) {
         let re = Regex::new(r"\.(zip|cbz)").unwrap();
         let file_name_exclude_suffix = re.replace_all(&file_name, "").to_string();
         let extracted_folder_path = path::PathBuf::from(lake.clone() + &file_name_exclude_suffix);
-        rename(extracted_folder_path.to_str().unwrap());
+        println!("{:?}", extracted_folder_path);
+        let t = Transform{ 
+            src_dir: &extracted_folder_path, 
+            thread_pool_num: 8 };
+        t.walk_dir(Transform::convert, true);
+        t.walk_dir(Transform::split, true);
+        t.walk_dir(Transform::resize, true); 
         let dist_path = will_save_path + &String::from(".custom.zip");
         compress(&extracted_folder_path.to_str().unwrap(), &dist_path);
         write(&dist_path, &file_name).await;

@@ -48,21 +48,25 @@ pub fn rename(p: &str) {
     pool.join();
 }
 
-struct Transform {
-    src_dir: PathBuf,
-    thread_pool_num: usize,
+pub struct Transform<'a> {
+    pub src_dir: &'a PathBuf,
+    pub thread_pool_num: usize,
 }
 
 pub trait TransformTrait {
     fn check_fields(&self) -> Result<i64, String>;
-    fn walk_dir<F: (Fn(&PathBuf) -> PathBuf) + Send + Clone + 'static>(&self, f: F) -> usize;
+    fn walk_dir<F: (Fn(&PathBuf, bool) -> PathBuf) + Send + Clone + 'static>(
+        &self,
+        f: F,
+        update: bool,
+    ) -> usize;
     fn encode_webp(img: DynamicImage, path: &PathBuf);
-    fn convert(p: &PathBuf) -> PathBuf;
-    fn resize(p: &PathBuf) -> PathBuf;
-    fn split(p: &PathBuf) -> PathBuf;
+    fn convert(p: &PathBuf, update: bool) -> PathBuf;
+    fn resize(p: &PathBuf, update: bool) -> PathBuf;
+    fn split(p: &PathBuf, update: bool) -> PathBuf;
 }
 
-impl TransformTrait for Transform {
+impl TransformTrait for Transform<'_> {
     fn check_fields(&self) -> Result<i64, String> {
         if !self.src_dir.is_dir() {
             return Err(format!(
@@ -72,7 +76,11 @@ impl TransformTrait for Transform {
         }
         Ok(1)
     }
-    fn walk_dir<F: (Fn(&PathBuf) -> PathBuf) + Send + Clone + 'static>(&self, f: F) -> usize {
+    fn walk_dir<F: (Fn(&PathBuf, bool) -> PathBuf) + Send + Clone + 'static>(
+        &self,
+        f: F,
+        update: bool,
+    ) -> usize {
         let wark = WalkDir::new(&self.src_dir).sort_by_file_name();
         let pool = ThreadPool::new(self.thread_pool_num);
         let (tx, rx) = mpsc::channel();
@@ -85,7 +93,7 @@ impl TransformTrait for Transform {
                         let moved_f = f.to_owned();
                         let moved_tx = tx.to_owned();
                         pool.execute(move || {
-                            let p = moved_f(&PathBuf::from(dir.path()));
+                            let p = moved_f(&PathBuf::from(dir.path()), update);
                             moved_tx.send(p).unwrap();
                         });
                         inc = inc + 1;
@@ -104,13 +112,16 @@ impl TransformTrait for Transform {
         file.write_all(wpmd).unwrap();
         file.flush().unwrap();
     }
-    fn convert(p: &PathBuf) -> PathBuf {
+    fn convert(p: &PathBuf, update: bool) -> PathBuf {
         let img = image::open(p.as_path()).unwrap();
         let webp_path = PathBuf::from(format!("{}.webp", p.as_path().display()));
         Self::encode_webp(img, &webp_path);
+        if update {
+            std::fs::remove_file(p).unwrap();
+        }
         return webp_path;
     }
-    fn resize(p: &PathBuf) -> PathBuf {
+    fn resize(p: &PathBuf, update: bool) -> PathBuf {
         let mut img = image::open(p.as_path()).unwrap();
         while img.width() * img.height() > 500 * 1000 {
             let w = img.width() as f64;
@@ -123,9 +134,12 @@ impl TransformTrait for Transform {
         }
         let webp_path = PathBuf::from(format!("{}.resize.webp", p.as_path().display()));
         Self::encode_webp(img, &webp_path);
+        if update {
+            std::fs::remove_file(p).unwrap();
+        }
         return PathBuf::from(webp_path);
     }
-    fn split(p: &PathBuf) -> PathBuf {
+    fn split(p: &PathBuf, update: bool) -> PathBuf {
         let mut img = image::open(p.as_path()).unwrap();
         if img.height() >= img.width() {
             let a = p.to_path_buf();
@@ -138,6 +152,10 @@ impl TransformTrait for Transform {
         let right_img = img.crop(img.width() / 2, 0, img.width() / 2, img.height());
         let right_webp_path = PathBuf::from(format!("{}.split.right.webp", p.as_path().display()));
         Self::encode_webp(right_img, &right_webp_path);
+
+        if update {
+            std::fs::remove_file(p).unwrap();
+        }
         return left_webp_path;
     }
 }
@@ -153,7 +171,7 @@ mod tests {
     fn transform_check_fields_is_ok() {
         // Arrange
         let t = Transform {
-            src_dir: PathBuf::from("."),
+            src_dir: &PathBuf::from("."),
             thread_pool_num: 8,
         };
 
@@ -171,7 +189,7 @@ mod tests {
     fn transform_check_fields_is_ng() {
         // Arrange
         let t = Transform {
-            src_dir: PathBuf::from("./README.md"),
+            src_dir: &PathBuf::from("./README.md"),
             thread_pool_num: 8,
         };
 
@@ -189,15 +207,15 @@ mod tests {
     fn transform_pass_walk_dir() {
         // Arrange
         let t = Transform {
-            src_dir: PathBuf::from("./samples/transform_pass_walk_dir"),
+            src_dir: &PathBuf::from("./samples/transform_pass_walk_dir"),
             thread_pool_num: 8,
         };
-        fn sample(p: &PathBuf) -> PathBuf {
+        fn sample(p: &PathBuf, _: bool) -> PathBuf {
             p.to_path_buf()
         }
 
         // Act
-        let result = t.walk_dir(sample);
+        let result = t.walk_dir(sample, false);
 
         // Assert
         assert_eq!(result, 1);
@@ -209,7 +227,7 @@ mod tests {
         let p = PathBuf::from("./samples/transform_convert/rust-social-wide.jpeg");
 
         // Act
-        let result = Transform::convert(&p);
+        let result = Transform::convert(&p, false);
 
         // Assert
         assert_eq!(
@@ -230,7 +248,7 @@ mod tests {
         let p = PathBuf::from("./samples/transform_resize/rust-social-wide.webp");
 
         // Act
-        let result = Transform::resize(&p);
+        let result = Transform::resize(&p, false);
 
         // Assert
         assert_eq!(
@@ -249,7 +267,7 @@ mod tests {
         let p = PathBuf::from("./samples/transform_split/rust-social-wide.webp");
 
         // Act
-        let result = Transform::split(&p);
+        let result = Transform::split(&p, false);
 
         // Assert
         assert_eq!(
