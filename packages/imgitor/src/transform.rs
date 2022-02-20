@@ -1,6 +1,6 @@
 use std::{io::Write, ops::Deref, path::PathBuf, sync::mpsc};
 
-use image::{DynamicImage, GenericImageView};
+use image::{DynamicImage, EncodableLayout, GenericImageView};
 use std::fs::File;
 use threadpool::ThreadPool;
 use walkdir::WalkDir;
@@ -106,7 +106,10 @@ impl TransformTrait for Transform<'_> {
         return count;
     }
     fn encode_webp(img: DynamicImage, path: &PathBuf) {
-        let wpm = Encoder::from_image(&img).unwrap().encode_lossless();
+        let widht = img.width();
+        let height = img.height();
+        let rgb_img = img.into_rgb8();
+        let wpm = Encoder::from_rgb(rgb_img.as_bytes(), widht, height).encode(100.0);
         let wpmd = wpm.deref();
         let mut file = File::create(&path).unwrap();
         file.write_all(wpmd).unwrap();
@@ -280,5 +283,36 @@ mod tests {
             .unwrap();
         std::fs::remove_file("./samples/transform_split/rust-social-wide.webp.split.right.webp")
             .unwrap();
+    }
+
+    #[test]
+    fn transform_encode_webp() {
+        // Arrange
+        let p = PathBuf::from("./samples/transform_encode_webp/rust-social-wide.jpeg");
+        let img = image::open(p).unwrap();
+        let path = PathBuf::from("./samples/transform_encode_webp/rust-social-wide.webp");
+
+        // Act
+        Transform::encode_webp(img, &path);
+
+        // Assert
+        assert!(path.is_file(), "save file");
+
+        // Teardown
+        std::fs::remove_file("./samples/transform_encode_webp/rust-social-wide.webp").unwrap();
+    }
+
+    #[test]
+    fn transform_pass_tmp() {
+        // Arrange
+        let t = Transform {
+            src_dir: &PathBuf::from("./lake/a/"),
+            thread_pool_num: 8,
+        };
+
+        // Act
+        t.walk_dir(Transform::convert, true);
+        t.walk_dir(Transform::split, true);
+        t.walk_dir(Transform::resize, true);
     }
 }
