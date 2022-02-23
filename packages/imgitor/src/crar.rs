@@ -1,12 +1,13 @@
 use std::path;
-
-extern crate unrar;
+use std::process::Command;
 
 pub fn extract(f: &str, p: &path::PathBuf) -> path::PathBuf {
-    unrar::Archive::new(f.to_string())
-        .extract_to(p.to_str().unwrap().to_string())
-        .unwrap()
-        .process()
-        .unwrap();
+    Command::new("7z")
+        .arg("x")
+        .arg("-o./lake/")
+        .arg(f.to_string())
+        .output()
+        .expect("Failed to execute command");
+
     return p.to_path_buf();
 }

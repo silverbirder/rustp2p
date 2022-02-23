@@ -9,4 +9,5 @@ RUN cargo install --locked --path .
 ENV GOOGLE_APPLICATION_CREDENTIALS /app/a.json
 COPY ./secrets/a.json /app/a.json
 RUN mkdir lake
+RUN apt-get update && apt-get install p7zip-full -y
 ENTRYPOINT ["imgitor"]
