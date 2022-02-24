@@ -5,7 +5,7 @@ use std::fs::File;
 use threadpool::ThreadPool;
 use walkdir::WalkDir;
 use webp::Encoder;
-
+use regex::Regex;
 pub struct Transform<'a> {
     pub src_dir: &'a PathBuf,
     pub thread_pool_num: usize,
@@ -57,12 +57,16 @@ impl TransformTrait for Transform<'_> {
     fn rename(&self) {
         let wark = WalkDir::new(&self.src_dir).sort_by_file_name();
         let mut inc = 1;
+        let r = Regex::new(r"^(.+?)/([^./]+).([^.]+)$").unwrap();
         for file in wark {
             let dir = file.unwrap();
-            let file_rename = format!("{:03}.webp", inc);
-            // println!("{:?}", dir.file_name());
-            // println!("{:?}", file_rename);
-            inc = inc + 1;
+            if dir.file_type().is_file() {
+                let c = r.captures(&dir.path().to_str().unwrap()).unwrap();
+                let zero_padding_inc = format!("{:03}", inc);
+                let rename_dir_path = format!("{}/{}.{}", &c[1], zero_padding_inc, &c[3]);
+                std::fs::rename(dir.path(), rename_dir_path).unwrap();
+                inc = inc + 1;
+            }
         }
     }
     fn encode_webp(img: DynamicImage, path: &PathBuf) {
