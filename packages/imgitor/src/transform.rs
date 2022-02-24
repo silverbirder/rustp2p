@@ -17,6 +17,7 @@ pub trait TransformTrait {
         f: F,
         update: bool,
     ) -> usize;
+    fn rename(&self);
     fn encode_webp(img: DynamicImage, path: &PathBuf);
     fn convert(p: &PathBuf, update: bool) -> PathBuf;
     fn resize(p: &PathBuf, update: bool) -> PathBuf;
@@ -52,6 +53,17 @@ impl TransformTrait for Transform<'_> {
         pool.join();
         let count = rx.iter().take(inc).count();
         return count;
+    }
+    fn rename(&self) {
+        let wark = WalkDir::new(&self.src_dir).sort_by_file_name();
+        let mut inc = 1;
+        for file in wark {
+            let dir = file.unwrap();
+            let file_rename = format!("{:03}.webp", inc);
+            // println!("{:?}", dir.file_name());
+            // println!("{:?}", file_rename);
+            inc = inc + 1;
+        }
     }
     fn encode_webp(img: DynamicImage, path: &PathBuf) {
         let widht = img.width();
@@ -207,5 +219,19 @@ mod tests {
 
         // Teardown
         std::fs::remove_file("./samples/transform_encode_webp/rust-social-wide.webp").unwrap();
+    }
+
+    #[test]
+    fn transform_rename() {
+        // Arrange
+        let t = Transform {
+            src_dir: &PathBuf::from("./samples/transform_rename"),
+            thread_pool_num: 8,
+        };
+
+        // Act
+        t.rename();
+
+        // Assert
     }
 }
