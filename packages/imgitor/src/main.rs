@@ -41,6 +41,7 @@ async fn process(n: &str) {
         t.walk_dir(Transform::convert, true);
         t.walk_dir(Transform::split, true);
         t.walk_dir(Transform::resize, true);
+        t.rename();
         let dist_path = will_save_path + &String::from(".custom.zip");
         compress(&extracted_folder_path.to_str().unwrap(), &dist_path);
         write(
@@ -61,6 +62,7 @@ async fn process(n: &str) {
         t.walk_dir(Transform::convert, true);
         t.walk_dir(Transform::split, true);
         t.walk_dir(Transform::resize, true);
+        t.rename();
         let dist_path = will_save_path + &String::from(".custom.zip");
         compress(&extracted_folder_path.to_str().unwrap(), &dist_path);
         write(&dist_path, &file_name).await;
