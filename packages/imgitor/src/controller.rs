@@ -52,3 +52,48 @@ pub async fn index(n: &str) {
         return;
     }
 }
+
+trait CatTrait {
+    fn new() -> Self;
+    fn say(self);
+}
+struct Cat {}
+impl CatTrait for Cat {
+    fn new() -> Cat {
+        Cat {}
+    }
+    fn say(self) {
+        println!("say");
+    }
+}
+struct Human<C: CatTrait> {
+    pub cat: C,
+}
+impl<C: CatTrait> Human<C> {
+    fn cat_say(self) {
+        self.cat.say();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pass() {
+        struct CatMock {
+            called: bool,
+        }
+        impl CatTrait for CatMock {
+            fn new() -> CatMock {
+                CatMock { called: false }
+            }
+            fn say(self) {
+                println!("say mock");
+            }
+        }
+        let c = CatMock::new();
+        let h = Human { cat: c };
+        h.cat_say();
+    }
+}
