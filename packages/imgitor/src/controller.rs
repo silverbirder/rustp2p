@@ -53,25 +53,31 @@ pub async fn index(n: &str) {
     }
 }
 
-trait CatTrait {
-    fn new() -> Self;
-    fn say(self);
+struct Controller {}
+
+#[derive(Debug)]
+enum FILE_TYPE {
+    CBZ,
+    ZIP,
+    RAR,
+    UNKNOWN,
 }
-struct Cat {}
-impl CatTrait for Cat {
-    fn new() -> Cat {
-        Cat {}
+
+impl Controller {
+    fn file_type(self)-> FILE_TYPE {
+        FILE_TYPE::UNKNOWN
     }
-    fn say(self) {
-        println!("say");
-    }
-}
-struct Human<C: CatTrait> {
-    pub cat: C,
-}
-impl<C: CatTrait> Human<C> {
-    fn cat_say(self) {
-        self.cat.say();
+    fn process(self, file_type: FILE_TYPE) {
+        // download
+        // extract
+        // transform
+        // compress
+        // upload
+        match file_type {
+            FILE_TYPE::CBZ | FILE_TYPE::ZIP  => {},
+            FILE_TYPE::RAR => {},
+            FILE_TYPE::UNKNOWN => {},
+        }
     }
 }
 
@@ -80,20 +86,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn pass() {
-        struct CatMock {
-            called: bool,
+    fn controller_file_type() {
+        let c = Controller{};
+        let ft = c.file_type();
+        match ft {
+            FILE_TYPE::UNKNOWN => { assert!(true, "")},
+            _ => {assert!(false, "No")},
         }
-        impl CatTrait for CatMock {
-            fn new() -> CatMock {
-                CatMock { called: false }
-            }
-            fn say(self) {
-                println!("say mock");
-            }
-        }
-        let c = CatMock::new();
-        let h = Human { cat: c };
-        h.cat_say();
     }
 }
