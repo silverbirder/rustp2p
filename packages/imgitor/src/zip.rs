@@ -9,7 +9,7 @@ use zip::{result::ZipError, write::FileOptions};
 
 extern crate zip;
 
-pub fn compress(src_dir: &str, dist_path: &str) {
+pub fn compress(src_dir: &path::PathBuf, dist_path: &path::PathBuf) {
     const METHOD_STORED: Option<zip::CompressionMethod> = Some(zip::CompressionMethod::Stored);
     #[cfg(any(
         feature = "deflate",
@@ -36,13 +36,17 @@ pub fn compress(src_dir: &str, dist_path: &str) {
             continue;
         }
         match doit(src_dir, dist_path, method.unwrap()) {
-            Ok(_) => println!("done: {} written to {}", src_dir, dist_path),
+            Ok(_) => println!(
+                "done: {} written to {}",
+                src_dir.to_str().unwrap(),
+                dist_path.to_str().unwrap()
+            ),
             Err(e) => println!("Error: {:?}", e),
         }
     }
     fn doit(
-        src_dir: &str,
-        dst_file: &str,
+        src_dir: &path::PathBuf,
+        dst_file: &path::PathBuf,
         method: zip::CompressionMethod,
     ) -> zip::result::ZipResult<()> {
         if !path::Path::new(src_dir).is_dir() {
@@ -58,7 +62,7 @@ pub fn compress(src_dir: &str, dist_path: &str) {
 
     fn zip_dir<T>(
         it: &mut dyn Iterator<Item = DirEntry>,
-        prefix: &str,
+        prefix: &path::PathBuf,
         writer: T,
         method: zip::CompressionMethod,
     ) -> zip::result::ZipResult<()>
@@ -92,7 +96,7 @@ pub fn compress(src_dir: &str, dist_path: &str) {
     }
 }
 
-pub fn extract(f: &str, pb: &path::PathBuf) -> path::PathBuf {
+pub fn extract(f: &path::PathBuf, pb: &path::PathBuf) -> path::PathBuf {
     // TODO: Support file is only zip. need validation.
     // support zip (and cbz)
     let fname = std::path::Path::new(f);

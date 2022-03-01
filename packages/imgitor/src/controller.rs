@@ -1,62 +1,26 @@
 use crate::{compress, download, rar_extract, read, write, zip_extract, Transform, TransformTrait};
-use regex::Regex;
-use std::path;
+use std::path::PathBuf;
 
 pub async fn index(n: &str) {
-    let file_name = String::from(n);
-    let lake = String::from("./lake/");
-    let obj = read(&file_name).await;
-    let will_save_path = lake.clone() + &file_name;
-    download(&obj.download_url(600).unwrap(), &will_save_path).await;
-    let extracted_folder_path;
-    if file_name.ends_with(".rar") {
-        let re = Regex::new(r"\.rar").unwrap();
-        let file_name_exclude_suffix = re.replace_all(&file_name, "").to_string();
-        extracted_folder_path = rar_extract(
-            &will_save_path,
-            &path::PathBuf::from(lake.clone() + &file_name_exclude_suffix),
-        );
-        let t = Transform {
-            src_dir: &extracted_folder_path,
-            thread_pool_num: 8,
-        };
-        t.walk_dir(Transform::convert, true);
-        t.walk_dir(Transform::split, true);
-        t.walk_dir(Transform::resize, true);
-        t.rename();
-        let dist_path = will_save_path + &String::from(".custom.zip");
-        compress(&extracted_folder_path.to_str().unwrap(), &dist_path);
-        write(
-            &dist_path,
-            &(file_name_exclude_suffix.clone() + &String::from(".zip")),
-        )
-        .await;
-    } else if file_name.ends_with(".zip") || file_name.ends_with(".cbz") {
-        zip_extract(&will_save_path, &path::PathBuf::from(lake.clone()));
-        let re = Regex::new(r"\.(zip|cbz)").unwrap();
-        let file_name_exclude_suffix = re.replace_all(&file_name, "").to_string();
-        let extracted_folder_path = path::PathBuf::from(lake.clone() + &file_name_exclude_suffix);
-        println!("{:?}", extracted_folder_path);
-        let t = Transform {
-            src_dir: &extracted_folder_path,
-            thread_pool_num: 8,
-        };
-        t.walk_dir(Transform::convert, true);
-        t.walk_dir(Transform::split, true);
-        t.walk_dir(Transform::resize, true);
-        t.rename();
-        let dist_path = will_save_path + &String::from(".custom.zip");
-        compress(&extracted_folder_path.to_str().unwrap(), &dist_path);
-        write(&dist_path, &file_name).await;
-    } else {
-        return;
+    let c = Controller::new(String::from(n));
+    match c.file_type {
+        FileType::UNKNOWN => {
+            println!("Not support file");
+            return;
+        }
+        _ => {
+            c.process().await;
+        }
     }
 }
 
-struct Controller {}
+struct Controller {
+    target_file_name: String,
+    file_type: FileType,
+}
 
 #[derive(Debug)]
-enum FILE_TYPE {
+enum FileType {
     CBZ,
     ZIP,
     RAR,
@@ -64,34 +28,74 @@ enum FILE_TYPE {
 }
 
 impl Controller {
-    fn file_type(self)-> FILE_TYPE {
-        FILE_TYPE::UNKNOWN
+    fn new(target_file_name: String) -> Controller {
+        let file_type = if target_file_name.ends_with(".rar") {
+            FileType::RAR
+        } else if target_file_name.ends_with(".zip") {
+            FileType::ZIP
+        } else if target_file_name.ends_with(".cbz") {
+            FileType::CBZ
+        } else {
+            FileType::UNKNOWN
+        };
+        Controller {
+            target_file_name: target_file_name,
+            file_type: file_type,
+        }
     }
-    fn process(self, file_type: FILE_TYPE) {
+    async fn process(self) {
         // download
+        println!("downloading...");
+        let obj = read(&self.target_file_name).await;
+        let save_path = PathBuf::from(format!("./lake/{}", self.target_file_name));
+        download(&obj.download_url(600).unwrap(), &save_path).await;
+        println!("downloaded. save_path: {}", &save_path.to_str().unwrap());
+
         // extract
+        println!("extracting...");
+        let extract_path = save_path.with_extension(""); // remove extension
+        match self.file_type {
+            FileType::CBZ | FileType::ZIP => {
+                zip_extract(&save_path, &extract_path);
+            }
+            FileType::RAR => {
+                rar_extract(&save_path, &extract_path);
+            }
+            _ => {}
+        }
+        println!(
+            "extracted. extract_path: {}",
+            &extract_path.to_str().unwrap()
+        );
+
         // transform
+        println!("transforming...");
+        let t = Transform {
+            src_dir: &extract_path,
+            thread_pool_num: 8,
+        };
+        t.walk_dir(Transform::convert, true);
+        t.walk_dir(Transform::split, true);
+        t.walk_dir(Transform::resize, true);
+        t.rename();
+        println!("transformed");
+
         // compress
+        println!("compressing...");
+        let compress_path = save_path.with_extension("custom.zip");
+        compress(&extract_path, &compress_path);
+        println!(
+            "compressed. compress_path: {}",
+            &compress_path.to_str().unwrap()
+        );
+
         // upload
-        match file_type {
-            FILE_TYPE::CBZ | FILE_TYPE::ZIP  => {},
-            FILE_TYPE::RAR => {},
-            FILE_TYPE::UNKNOWN => {},
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn controller_file_type() {
-        let c = Controller{};
-        let ft = c.file_type();
-        match ft {
-            FILE_TYPE::UNKNOWN => { assert!(true, "")},
-            _ => {assert!(false, "No")},
-        }
+        println!("uploading...");
+        write(
+            &compress_path,
+            compress_path.file_name().unwrap().to_str().unwrap(),
+        )
+        .await;
+        println!("uploaded.");
     }
 }
