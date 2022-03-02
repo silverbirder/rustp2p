@@ -4,7 +4,7 @@ use std::process::Command;
 pub fn extract(f: &path::PathBuf, p: &path::PathBuf) -> path::PathBuf {
     Command::new("7z")
         .arg("x")
-        .arg("-o./lake/")
+        .arg(format!("-o{}", p.to_str().unwrap()))
         .arg(f)
         .output()
         .expect("Failed to execute command");

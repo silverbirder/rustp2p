@@ -74,9 +74,15 @@ impl Controller {
             src_dir: &extract_path,
             thread_pool_num: 8,
         };
+        println!("processing remove_not_image ...");
+        t.walk_dir(Transform::remove_not_image, true);
+        println!("processing convert ...");
         t.walk_dir(Transform::convert, true);
+        println!("processing split ...");
         t.walk_dir(Transform::split, true);
+        println!("processing resize ...");
         t.walk_dir(Transform::resize, true);
+        println!("processing rename ...");
         t.rename();
         println!("transformed");
 

@@ -36,11 +36,7 @@ pub fn compress(src_dir: &path::PathBuf, dist_path: &path::PathBuf) {
             continue;
         }
         match doit(src_dir, dist_path, method.unwrap()) {
-            Ok(_) => println!(
-                "done: {} written to {}",
-                src_dir.to_str().unwrap(),
-                dist_path.to_str().unwrap()
-            ),
+            Ok(_) => println!("done: {} written to {}", src_dir.to_str().unwrap(), dist_path.to_str().unwrap()),
             Err(e) => println!("Error: {:?}", e),
         }
     }

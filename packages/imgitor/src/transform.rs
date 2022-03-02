@@ -21,6 +21,7 @@ pub trait TransformTrait {
     fn convert(p: &PathBuf, update: bool) -> PathBuf;
     fn resize(p: &PathBuf, update: bool) -> PathBuf;
     fn split(p: &PathBuf, update: bool) -> PathBuf;
+    fn remove_not_image(p: &PathBuf, update: bool) -> PathBuf;
 }
 
 impl TransformTrait for Transform<'_> {
@@ -57,6 +58,7 @@ impl TransformTrait for Transform<'_> {
         let wark = WalkDir::new(&self.src_dir).sort_by_file_name();
         let mut inc = 1;
         for file in wark {
+            println!("{:?}", file);
             let dir = file.unwrap();
             if dir.file_type().is_file() {
                 let p = dir.into_path();
@@ -77,6 +79,15 @@ impl TransformTrait for Transform<'_> {
         let mut file = File::create(&path).unwrap();
         file.write_all(wpmd).unwrap();
         file.flush().unwrap();
+    }
+    fn remove_not_image(p: &PathBuf, _: bool) -> PathBuf {
+        match image::open(p.as_path()) {
+            Ok(_) => {}
+            Err(_) => {
+                std::fs::remove_file(p).unwrap();
+            }
+        }
+        return PathBuf::from(p);
     }
     fn convert(p: &PathBuf, update: bool) -> PathBuf {
         let img = image::open(p.as_path()).unwrap();
@@ -147,6 +158,22 @@ mod tests {
 
         // Assert
         assert_eq!(result, 1);
+    }
+
+    #[test]
+    fn transform_remove_not_image() {
+        // Arrange
+        File::create("./samples/transform_remove_not_image/a.txt").unwrap();
+        let p = PathBuf::from("./samples/transform_remove_not_image/a.txt");
+
+        // Act
+        let result = Transform::remove_not_image(&p, false);
+
+        // Assert
+        assert_eq!(
+            result.to_str().unwrap(),
+            "./samples/transform_remove_not_image/a.txt"
+        );
     }
 
     #[test]
