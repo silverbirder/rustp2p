@@ -100,7 +100,7 @@ impl TransformTrait for Transform<'_> {
     }
     fn resize(p: &PathBuf, update: bool) -> PathBuf {
         let mut img = image::open(p.as_path()).unwrap();
-        while img.width() * img.height() > 500 * 1000 {
+        while img.width() * img.height() > 800 * 1000 {
             let w = img.width() as f64;
             let h = img.height() as f64;
             img = img.resize(
