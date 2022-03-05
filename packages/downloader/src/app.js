@@ -19,7 +19,7 @@ const createCloudTask = (url) => {
         process.env.CLOUD_TASK_QUEUE_NAME
     );
 
-    const inSeconds = 60 * 60; // 1時間
+    const inSeconds = 60 * 60;
     const task = {
         httpRequest: {
             httpMethod: 'GET',
@@ -65,14 +65,12 @@ app.get('/', async (req, res) => {
                     await Promise.all(torrent.files.map(async (file) => {
                         return uploadFile(file.path, file.name);
                     }));
-                    console.log(`${torrent.name} file uploaded`);
-                    torrent.destroy();
-                    console.log(`${torrent.name} torrent destroy`);
-                    console.log(`${torrent.name} add cloud tasks`);
                     await Promise.all(torrent.files.map(async (file) => {
                         return createCloudTask(`${process.env.IMGITOR_URL}?n=${encodeURIComponent(file.name)}`);
                     }));
-                    console.log(`${torrent.name} added cloud tasks`);
+                    console.log(`${torrent.name} file uploaded`);
+                    torrent.destroy();
+                    console.log(`${torrent.name} torrent destroy`);
                 })
                 .on('warning', (err) => {
                     _log('torrent warning event');
