@@ -19,6 +19,9 @@ const createCloudTask = (url) => {
         process.env.CLOUD_TASK_QUEUE_NAME
     );
 
+    /*
+      details: 'Invalid URL. Possible causes are: disallowed characters or port number (cannot be greater than 65535). URL length cannot exceed 2083 characters. Note that length may increase after encoding.',
+    */
     const inSeconds = 60 * 60;
     const task = {
         httpRequest: {
@@ -66,7 +69,11 @@ app.get('/', async (req, res) => {
                         return uploadFile(file.path, file.name);
                     }));
                     await Promise.all(torrent.files.map(async (file) => {
-                        return createCloudTask(`${process.env.IMGITOR_URL}?n=${encodeURIComponent(file.name)}`);
+                        /*
+                            why .replace(/'/g, "%27") ?
+                            → https://stackoverflow.com/questions/10896807/javascript-encodeuricomponent-doesnt-encode-single-quotes
+                        */ 
+                        return createCloudTask(`${process.env.IMGITOR_URL}?n=${encodeURIComponent(file.name).replace(/'/g, "%27")}`);
                     }));
                     console.log(`${torrent.name} file uploaded`);
                     torrent.destroy();
