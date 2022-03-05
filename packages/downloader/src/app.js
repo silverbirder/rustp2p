@@ -1,13 +1,37 @@
 const WebTorrent = require('webtorrent')
 const { Storage } = require('@google-cloud/storage');
+const { CloudTasksClient } = require('@google-cloud/tasks');
 
 const client = new WebTorrent();
 const storage = new Storage();
+const cloudTaskClient = new CloudTasksClient();
 
-const uploadFile = async (filePath, destFileName) => {
+const uploadFile = (filePath, destFileName) => {
     return storage.bucket(process.env.CLOUD_STORAGE_BUCKET_NAME).upload(filePath, {
         destination: destFileName,
     });
+}
+
+const createCloudTask = (url) => {
+    const parent = cloudTaskClient.queuePath(
+        process.env.GOOGLE_PROJECT_NAME,
+        process.env.CLOUD_TASK_LOCATION,
+        process.env.CLOUD_TASK_QUEUE_NAME
+    );
+
+    const inSeconds = 60 * 60; // 1時間
+    const task = {
+        httpRequest: {
+            httpMethod: 'GET',
+            url: url,
+        },
+        scheduleTime: {
+            seconds: inSeconds + Date.now() / 1000
+        }
+    };
+
+    const request = { parent: parent, task: task };
+    return cloudTaskClient.createTask(request);
 }
 
 const express = require('express');
@@ -44,6 +68,11 @@ app.get('/', async (req, res) => {
                     console.log(`${torrent.name} file uploaded`);
                     torrent.destroy();
                     console.log(`${torrent.name} torrent destroy`);
+                    console.log(`${torrent.name} add cloud tasks`);
+                    await Promise.all(torrent.files.map(async (file) => {
+                        return createCloudTask(`${process.env.IMGITOR_URL}?n=${encodeURIComponent(file.name)}`);
+                    }));
+                    console.log(`${torrent.name} added cloud tasks`);
                 })
                 .on('warning', (err) => {
                     _log('torrent warning event');
