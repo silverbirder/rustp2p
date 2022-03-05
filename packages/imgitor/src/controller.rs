@@ -1,4 +1,4 @@
-use crate::{compress, download, rar_extract, read, write, zip_extract, Transform, TransformTrait};
+use crate::{compress, download, extract, read, write, Transform, TransformTrait};
 use std::path::PathBuf;
 
 pub async fn index(n: &str) {
@@ -55,13 +55,12 @@ impl Controller {
         println!("extracting...");
         let extract_path = save_path.with_extension(""); // remove extension
         match self.file_type {
-            FileType::CBZ | FileType::ZIP => {
-                zip_extract(&save_path, &extract_path);
+            FileType::CBZ | FileType::ZIP | FileType::RAR => {
+                extract(&save_path, &extract_path);
             }
-            FileType::RAR => {
-                rar_extract(&save_path, &extract_path);
+            _ => {
+                return;
             }
-            _ => {}
         }
         println!(
             "extracted. extract_path: {}",
@@ -88,7 +87,7 @@ impl Controller {
 
         // compress
         println!("compressing...");
-        let compress_path = save_path.with_extension("custom.zip");
+        let compress_path = save_path.with_extension("cbz");
         compress(&extract_path, &compress_path);
         println!(
             "compressed. compress_path: {}",

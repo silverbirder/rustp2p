@@ -2,15 +2,29 @@ use std::path;
 use std::process::Command;
 
 pub fn extract(f: &path::PathBuf, p: &path::PathBuf) -> path::PathBuf {
+    println!("extract");
     Command::new("7z")
         .arg("x")
         .arg(format!("-o{}", p.to_str().unwrap()))
         .arg(f)
+        .arg("-aoa") // https://sevenzip.osdn.jp/chm/cmdline/switches/overwrite.htm
         .output()
         .expect("Failed to execute command");
-
     return p.to_path_buf();
 }
+
+pub fn compress(f: &path::PathBuf, p: &path::PathBuf) -> path::PathBuf {
+    Command::new("7z")
+        .arg("a")
+        .arg("-sdel")
+        .arg(format!("{}", p.to_str().unwrap()))
+        .arg(format!("{}/*", f.to_str().unwrap()))
+        .arg("-mx9")
+        .output()
+        .expect("Failed to execute command");
+    return p.to_path_buf();
+}
+
 /*
 もともと、以下のcrateを使っていた。
 https://crates.io/crates/unrar
